@@ -156,6 +156,6 @@ mod tests {
             *p.pointer_mut() = Arc::new(2);
             assert_eq!(*p.downgrade().upgrade().unwrap().pointer().deref(), 2);
         }
-        assert_eq!(8, size_of::<Option<Oc<i32>>>());
+        assert_eq!(size_of::<Arc<i32>>(), size_of::<Option<Oc<i32>>>());
     }
 }
