@@ -1,84 +1,101 @@
+use std::pin::Pin;
+use std::cmp::Ordering;
+use std::fmt::{Debug, Formatter, Error, Display, Pointer};
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Weak};
 use std::rc::{Rc, Weak as Wk};
 
+/// Ointer trait
 pub trait Ointer {
     type Pointer;
-    fn o(&self) -> bool;
-    fn flip(&mut self);
-    fn pointer(&self) -> &Self::Pointer;
-    fn pointer_mut(&mut self) -> &mut Self::Pointer;
+    /// Get orientation
+    #[inline(always)]
+    fn o(&self) -> bool {
+        unsafe {
+            *(self as *const Self as *const isize) < 0
+        }
+    }
+    /// Flip orientation
+    #[inline(always)]
+    fn flip(&mut self) {
+        let p = self as *mut Self as *mut isize;
+        unsafe {
+            *p = -*p;
+        }
+    }
+
+    /// Apply fn
+    #[inline(always)]
+    fn apply<R, F: FnOnce(bool, &Self::Pointer) -> R>(&self, f: F) -> R {
+        let b = self.o();
+        let p = unsafe {
+            let p = *(self as *const Self as *const isize);
+            if b {
+                -p
+            } else {
+                p
+            }
+        };
+        let o = unsafe {
+            &*(&p as *const isize as *const Self::Pointer)
+        };
+        f(b, o)
+    }
+
+    /// Apply fn mut
+    #[inline(always)]
+    fn apply_mut<R, F: FnOnce(&mut bool, &mut Self::Pointer) -> R>(&mut self, f: F) -> R {
+        let mut b = self.o();
+        let mut p = unsafe {
+            let p = *(self as *mut Self as *mut isize);
+            if b {
+                -p
+            } else {
+                p
+            }
+        };
+        let o = unsafe{
+            &mut *(&mut p as *mut isize as *mut Self::Pointer)
+        };
+        let ret = f(&mut b, o);
+        if b {
+            p = -p;
+        }
+        unsafe {
+            *(self as *mut Self as *mut isize) = p;
+        }
+        ret
+    }
 }
 
 macro_rules! define_ointer {
     ($ointer:ident, $pointer:ident) => {
-
+        #[derive(Default)]
         pub struct $ointer<T>($pointer<T>);
 
         impl<T> Ointer for $ointer<T> {
             type Pointer = $pointer<T>;
-
-            fn o(&self) -> bool {
-                unsafe {
-                    *(self as *const $ointer<T> as *const isize) < 0
-                }
-            }
-            fn flip(&mut self) {
-                let p = self as *mut $ointer<T> as *mut isize;
-                unsafe {
-                    *p = -*p;
-                }
-            }
-            fn pointer(&self) -> &Self::Pointer {
-                let o = self;
-                if o.o() {
-                    let p = o as *const $ointer<T> as isize as *mut isize;
-                    unsafe {
-                        *p = -*p;
-                    }
-                }
-                &o.0
-            }
-            fn pointer_mut(&mut self) -> &mut Self::Pointer {
-                let o = self;
-                if o.o() {
-                    let p = o as *mut $ointer<T> as *mut isize;
-                    unsafe {
-                        *p = -*p;
-                    }
-                }
-                &mut o.0
-            }
         }
 
-        impl<T> Drop for $ointer<T> where Self: Ointer {
-            fn drop(&mut self) {
-                if self.o() {
-                    self.flip();
-                }
+        impl<T> From<$pointer<T>> for $ointer<T> {
+            fn from(p: $pointer<T>) -> Self {
+                Self(p)
             }
         }
-    }
-}
-
-macro_rules! define_ointer_new {
-    ($ointer:ident, $pointer:ident) => {
-        impl<T> $ointer<T> {
-            pub fn new(value: T) -> Self {
-                Self($pointer::new(value))
-            }
-        }
-    };
-}
-
-macro_rules! define_ointer_clone {
-    ($ointer:ident, $pointer:ident) => {
-        impl<T> Clone for $ointer<T> where Self: Ointer<Pointer = $pointer<T>> {
+        
+        impl<T> Clone for $ointer<T> 
+            where Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: Clone
+        {
             fn clone(&self) -> Self {
-                let mut o = Self(self.pointer().clone());
-                if self.o() {
-                    o.flip();
-                }
-                o
+                self.apply(|b, p| {
+                    let mut o = Self(p.clone());
+                    if b {
+                        o.flip();
+                    }
+                    o
+                })
             }
         }
 
@@ -89,6 +106,116 @@ macro_rules! define_ointer_clone {
                 o
             }
         }
+
+        impl<T> Debug for $ointer<T>
+            where Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: Debug
+        {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+                self.apply(|b, p| (b,p).fmt(f))
+            }
+        }
+        
+        impl<T> Drop for $ointer<T> where Self: Ointer {
+            fn drop(&mut self) {
+                if self.o() {
+                    self.flip();
+                }
+            }
+        }
+    }
+}
+
+macro_rules! define_ointer_methods_and_traits {
+    ($ointer:ident, $pointer:ident) => {
+        impl<T> $ointer<T>
+            where Self: Ointer<Pointer = $pointer<T>>
+        {
+            pub fn new(x: T) -> Self {
+                Self($pointer::new(x))
+            }
+            pub fn pin(x: T) -> Pin<Self> {
+                unsafe {Pin::new_unchecked(Self::new(x)) }
+            }
+        }
+
+        impl<T> Hash for $ointer<T>
+            where Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: Hash
+        {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.apply(|b, p| (b,p).hash(state))
+            }
+        }
+
+        impl<T> PartialEq for $ointer<T> 
+            where Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: PartialEq
+        {
+            fn eq(&self, rhs: &Self) -> bool {
+                self.apply(
+                    |b, p| rhs.apply(
+                        |c, q| (b, p).eq(&(c, q))
+                    )
+                )
+            }
+        }
+
+        impl<T> PartialOrd for $ointer<T> 
+            where Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: PartialOrd
+        {
+            fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+                self.apply(
+                    |b, p| rhs.apply(
+                        |c, q| (b, p).partial_cmp(&(c, q))
+                    )
+                )
+            }
+        }
+
+        impl<T> Display for $ointer<T>
+            where Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: Debug
+        {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+                self.apply(|b, p| (b,p).fmt(f))
+            }
+        }
+
+        impl<T> Pointer for $ointer<T>
+            where Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: Debug
+        {
+            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+                self.apply(|b, p| (b,p).fmt(f))
+            }
+        }
+    };
+}
+
+macro_rules! define_ointer_deref {
+    ($ointer:ident) => {
+        impl<T> Deref for $ointer<T> {
+            type Target = T;
+            fn deref(&self) -> &Self::Target {
+                self.apply(|_, p| unsafe {
+                    &*(p.deref() as *const Self::Target)
+                })
+            }
+        }
+    };
+}
+
+macro_rules! define_ointer_deref_mut {
+    ($ointer:ident) => {
+        impl<T> DerefMut for $ointer<T> {
+            fn deref_mut(&mut self) -> &mut T {
+                self.apply_mut(|_, p| unsafe {
+                    &mut *(p.deref_mut() as *mut T)
+                })
+            }
+        }
     };
 }
 
@@ -96,65 +223,77 @@ macro_rules! define_shared_ointer {
     ($ointer_strong:ident, $pointer_strong:ident, $ointer_weak:ident, $pointer_weak:ident) => {
         define_ointer!($ointer_strong, $pointer_strong);
         define_ointer!($ointer_weak, $pointer_weak);
-        define_ointer_new!($ointer_strong, $pointer_strong);
-        define_ointer_clone!($ointer_strong, $pointer_strong);
-        define_ointer_clone!($ointer_weak, $pointer_weak);
-
+        define_ointer_methods_and_traits!($ointer_strong, $pointer_strong);
+        define_ointer_deref!($ointer_strong);
         impl<T> $ointer_strong<T> {
             pub fn downgrade(&self) -> $ointer_weak<T> {
-                let p = $pointer_strong::downgrade(&self.pointer());
-                let mut o = $ointer_weak(p);
-                if self.o() {
-                    o.flip();
-                }
-                o
-            }
-        }
-        
-        impl<T> $ointer_weak<T> {
-            pub fn upgrade(&self) -> Option<$ointer_strong<T>> {
-                let p = self.pointer().upgrade();
-                p.map(|p| {
-                    let mut o = $ointer_strong(p);
-                    if self.o() {
+                self.apply(|b, p| {
+                    let mut o = $ointer_weak($pointer_strong::downgrade(p));
+                    if b {
                         o.flip();
                     }
                     o
                 })
             }
-        }        
+        }
+        impl<T> $ointer_weak<T> {
+            pub fn upgrade(&self) -> Option<$ointer_strong<T>> {
+                self.apply(|b, w| {
+                    let p = w.upgrade();
+                    p.map(|p| {
+                        let mut o = $ointer_strong(p);
+                        if b {
+                            o.flip();
+                        }
+                        o
+                    })
+                })
+            }
+        }
     };
 }
 
 define_ointer!(Ox, Box);
-define_ointer_new!(Ox, Box);
+define_ointer_methods_and_traits!(Ox, Box);
+define_ointer_deref!(Ox);
+define_ointer_deref_mut!(Ox);
 define_shared_ointer!(Oc, Rc, Ok, Wk);
 define_shared_ointer!(Orc, Arc, Oak, Weak);
 
 /// test
 #[cfg(test)]
 mod tests {
-    use std::{ops::Deref, mem::size_of};
+    use std::mem::size_of;
 
     use super::*;
 
     #[test]
     fn test() {
         {
-            let mut p = Ox::new(1);
-            assert_eq!(p.o(), false);
-            p.flip();
-            assert_eq!(p.o(), true);
-            assert_eq!(*p.pointer().deref(), 1);
+            let mut o = Ox::new(1);
+            assert_eq!(*o, 1);
+            assert_eq!(o.o(), false);
+            o.flip();
+            assert_eq!(*o, 1);
+            assert_eq!(o.o(), true);
+            *o = i32::default();
+            assert_eq!(*o, i32::default());
+            assert_eq!(o.o(), true);
+            o.flip();
+            assert_eq!(o, Default::default());
         }
         {
-            let mut p = Orc::new(1);
-            assert_eq!(p.o(), false);
-            p.flip();
-            assert_eq!(p.o(), true);
-            assert_eq!(*p.pointer().deref(), 1);
-            *p.pointer_mut() = Arc::new(2);
-            assert_eq!(*p.downgrade().upgrade().unwrap().pointer().deref(), 2);
+            let mut o = Orc::new(1);
+            assert_eq!(*o, 1);
+            assert_eq!(o.o(), false);
+            o.flip();
+            assert_eq!(*o, 1);
+            assert_eq!(o.o(), true);
+            o.apply_mut(|b, p| {
+                *b = !*b;
+                *p = Default::default();
+            });
+            assert_eq!(*o.downgrade().upgrade().unwrap(), Default::default());
         }
         assert_eq!(size_of::<Arc<i32>>(), size_of::<Option<Oc<i32>>>());
     }
