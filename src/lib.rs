@@ -29,7 +29,7 @@ mod tests {
             assert_eq!(o, Pin::into_inner(OBox::pin(Default::default())));
         }
         {
-            let mut o = OBrc::new(1);
+            let mut o = OArc::new(1);
             assert_eq!(*o, 1);
             assert_eq!(o.o(), false);
             o.flip();

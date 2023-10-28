@@ -7,4 +7,4 @@ use std::pin::Pin;
 use crate::ointer::*;
 use std::sync::{Arc, Weak};
 
-define_shared_ointer!(OBrc, Arc, OWeak, Weak);
+define_shared_ointer!(OArc, Arc, OWeak, Weak);
