@@ -52,7 +52,6 @@ pub unsafe trait Ointer {
 
 macro_rules! define_ointer {
     ($ointer:ident, $pointer:ident) => {
-        #[derive(Default)]
         #[repr(transparent)]
         pub struct $ointer<T>($pointer<T>);
 
@@ -65,6 +64,16 @@ macro_rules! define_ointer {
                 let o = Self(p);
                 assert_eq!(o.o(), false);
                 o
+            }
+        }
+
+        impl<T> Default for $ointer<T>
+        where
+            Self: Ointer<Pointer = $pointer<T>>,
+            <Self as Ointer>::Pointer: Default,
+        {
+            fn default() -> Self {
+                $pointer::default().into()
             }
         }
 
