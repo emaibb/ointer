@@ -1,4 +1,4 @@
-//! `Ointer` use the first bit of pointer data to store an extra boolean value
+//! `Ointer` use the first bit of pointer data to store an extra boolean value, with `Box/Rc(Weak)/Arc(Weak)` wrapped as `Ox/Oc(Ok)/Orc(Oak)`.
 
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Error, Formatter, Pointer};
