@@ -1,4 +1,4 @@
-//! `Ointer` use the first bit of pointer data to store an extra boolean value, with `Box/Rc(Weak)/Arc(Weak)` wrapped.
+//! "Steal the high bits of a pointer to store an extra value"
 
 pub mod boxed;
 pub mod ointer;
@@ -10,37 +10,77 @@ pub use {boxed::*, ointer::*};
 /// test
 #[cfg(test)]
 mod tests {
-    use super::{rc::ORc, sync::*, *};
-    use std::{mem::size_of, pin::Pin, sync::Arc};
+    use super::{rc::*, sync::*, *};
+    use std::{mem::size_of, pin::Pin, rc::Rc, sync::*};
 
     #[test]
     fn test() {
         {
             let mut o = OBox::new(1);
             assert_eq!(*o, 1);
-            assert_eq!(o.o(), false);
-            o.flip();
+            assert_eq!(o.get::<bool>(), false);
             assert_eq!(*o, 1);
-            assert_eq!(o.o(), true);
             *o = i32::default();
             assert_eq!(*o, i32::default());
-            assert_eq!(o.o(), true);
-            o.flip();
+            o.set_bool(true);
+            let b = o.get_bool();
+            assert_eq!(b, true);
+            o.set_mut(false);
             assert_eq!(o, Pin::into_inner(OBox::pin(Default::default())));
         }
         {
-            let mut o = OArc::new(1);
+            let mut o = BArc::new(1);
             assert_eq!(*o, 1);
-            assert_eq!(o.o(), false);
-            o.flip();
+            assert_eq!(o.get::<bool>(), false);
+            #[derive(Clone, Copy, PartialEq, Debug)]
+            enum MySmallEnum {
+                _A,
+                B,
+                _C,
+            }
+            assert_eq!(size_of::<MySmallEnum>(), 1);
+            o.set_mut(MySmallEnum::B);
             assert_eq!(*o, 1);
-            assert_eq!(o.o(), true);
-            o.apply_mut(|b, p| {
+            assert_eq!(o.get::<MySmallEnum>(), MySmallEnum::B);
+            o.map_mut(|b: &mut bool, p| {
                 *b = !*b;
                 *p = Default::default();
             });
             assert_eq!(*o.downgrade().upgrade().unwrap(), Default::default());
         }
-        assert_eq!(size_of::<Arc<i32>>(), size_of::<Option<ORc<i32>>>());
+        {
+            let mut a = Arc::new(13);
+            define_enum_ointers!(
+                MyEnumOinters {
+                    Box<f64> = 1,
+                    Arc<i32> = 2,
+                    Weak<i8> = 3
+                },
+                8
+            );
+            let mut e = MyEnumOinters::new(2, a.clone());
+            assert_eq!(Arc::strong_count(&a), 2);
+            assert_eq!(
+                e.map_mut(
+                    |_| panic!(),
+                    |p| {
+                        let i = **p;
+                        *p = Arc::new(15);
+                        assert_eq!(Arc::strong_count(&a), 1);
+                        a = p.clone();
+                        i
+                    },
+                    |_| panic!()
+                ),
+                13
+            );
+            assert_eq!(e.map(|_| panic!(), |p1| **p1, |_| panic!()), 15);
+            assert_eq!(Arc::strong_count(&a), 2);
+            e.set_mut(1, Box::new(2.0));
+            assert_eq!(Arc::strong_count(&a), 1);
+            assert_eq!(e.map(|p| **p, |_| panic!(), |_| panic!()), 2.0);
+            assert_eq!(size_of::<MyEnumOinters>(), size_of::<usize>());
+        }
+        assert_eq!(size_of::<Rc<i32>>(), size_of::<Option<BRc<i32>>>());
     }
 }

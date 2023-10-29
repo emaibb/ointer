@@ -1,9 +1,12 @@
 [package]
 name = "ointer"
-version = "2.1.1"
+version = "3.0.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["topology", "geometry"]
 repository = "https://github.com/emaibb/ointer/"
 authors = ["Mingze Feng <mzfengibb@outlook.com>"]
-description = "Use the first bit of pointer data to store an extra boolean value"
+description = "Steal the high bits of a pointer to store an extra value"
+
+[dependencies]
+paste = "1.0.14"
