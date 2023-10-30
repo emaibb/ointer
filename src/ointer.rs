@@ -308,9 +308,9 @@ macro_rules! define_ointer_methods {
 pub(crate) use define_ointer_methods;
 
 /// Macro used to define `Box`/`Rc`/`Arc` like `ointer`s.
-/// This crate defines `BBox`(called `Byte-Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using 
+/// This crate defines `BBox`(called byte stolen `Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using 
 /// `define_ointer_strong!(BBox, Box, 8);` 
-/// And define `OBox` by using
+/// And define `OBox`(called orientable `Box`) by using
 /// `define_ointer_strong!(OBox, Box, 1);`
 /// 
 /// Tests over`OBox`
@@ -338,7 +338,9 @@ macro_rules! define_ointer_strong {
 }
 
 /// Macro used to define `Rc/Weak` or `Arc/Weak` like shared `ointer`s.
-/// This crate defines `BRc/BWeak`(called `Byte-Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using 
+/// This crate defines `BRc/BWeak`(called byte stolen `Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using 
+/// `define_shared_ointer!(BRc, Rc, BWeak, Weak, 8);`
+/// And define `ORc/OWeak`(called orientable `Rc/Weak`) by using
 /// `define_shared_ointer!(ORc, Rc, OWeak, Weak, 1);`
 /// 
 /// Tests over `BArc`
