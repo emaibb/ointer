@@ -95,7 +95,7 @@ mod tests {
             e.set_mut(1, Box::new(2.0));
             assert_eq!(Arc::strong_count(&a), 1);
             assert_eq!(e.map(|p| **p, |_| panic!(), |_| panic!()), 2.0);
-            assert_eq!(size_of::<MyEnumOinters>(), size_of::<usize>());
+            assert_eq!(size_of::<Option<MyEnumOinters>>(), size_of::<usize>());
         }
 
         // Test size comparison of Rc<i32> and Option<BRc<i32>>.

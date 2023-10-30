@@ -480,10 +480,10 @@ macro_rules! define_enum_ointers {
     ) => {
         paste::paste!{
             #[repr(transparent)]
-            struct [<$name Inner>](usize);
+            struct [<$name Inner>](core::num::NonZeroUsize);
 
             unsafe impl Ointer<$bits> for [<$name Inner>] {
-                type Pointer = usize;
+                type Pointer = core::num::NonZeroUsize;
             }
 
             #[repr(transparent)]
@@ -503,7 +503,7 @@ macro_rules! define_enum_ointers {
                                 panic!("Size overflow")
                             }
                             let mut inner = [<$name Inner>](unsafe {
-                                *(&p as *const P as *const usize)
+                                *(&p as *const P as *const core::num::NonZeroUsize)
                             });
                             inner.set_usize(u);
                             core::mem::forget(p);
