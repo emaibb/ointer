@@ -308,6 +308,28 @@ macro_rules! define_ointer_methods {
 pub(crate) use define_ointer_methods;
 
 /// Macro used to define `Box`/`Rc`/`Arc` like `ointer`s.
+/// This crate defines `BBox`(called `Byte-Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using
+/// ```rust
+/// define_ointer_strong!(BBox, Box, 8);
+/// ```
+/// And define `OBox` by using
+/// ```rust
+/// define_ointer_strong!(OBox, Box, 1);
+/// ```
+/// Here are some tests over`OBox`
+/// ```rust
+/// let mut o = OBox::new(1);
+/// assert_eq!(*o, 1);
+/// assert_eq!(o.get::<bool>(), false);
+/// assert_eq!(*o, 1);
+/// *o = i32::default();
+/// assert_eq!(*o, i32::default());
+/// o.set_bool(true);
+/// let b = o.get_bool();
+/// assert_eq!(b, true);
+/// o.set_mut(false);
+/// assert_eq!(o, Pin::into_inner(OBox::pin(Default::default())));
+/// ```
 #[macro_export]
 macro_rules! define_ointer_strong {
     ($ointer:ident, $pointer:ident, $bits:literal) => {
@@ -316,7 +338,37 @@ macro_rules! define_ointer_strong {
     };
 }
 
-/// Macro used to define `Rc/Weak` like shared `ointer`s
+/// Macro used to define `Rc/Weak` or `Arc/Weak` like shared `ointer`s.
+/// This crate defines `BRc/BWeak`(called `Byte-Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using
+/// ```rust
+/// define_shared_ointer!(OArc, Arc, OWeak, Weak, 1);
+/// ```
+/// Here are some tests over `BArc`
+/// ```rust
+/// let mut o = BArc::new(1);
+/// assert_eq!(*o, 1);
+/// assert_eq!(o.get::<bool>(), false);
+/// 
+/// // Define a small enum for testing.
+/// #[derive(Clone, Copy, PartialEq, Debug)]
+/// enum MySmallEnum {
+///     _A,
+///     B,
+///     _C,
+/// }
+/// assert_eq!(size_of::<MySmallEnum>(), 1);
+/// 
+/// o.set_mut(MySmallEnum::B);
+/// assert_eq!(*o, 1);
+/// assert_eq!(o.get::<MySmallEnum>(), MySmallEnum::B);
+/// 
+/// // Modify the bool and pointer inside the ointer.
+/// o.map_mut(|b: &mut bool, p| {
+///     *b = !*b;
+///     *p = Default::default();
+/// });
+/// assert_eq!(*o.downgrade().upgrade().unwrap(), Default::default());
+/// ```
 #[macro_export]
 macro_rules! define_shared_ointer {
     ($ointer_strong:ident, $pointer_strong:ident, $ointer_weak:ident, $pointer_weak:ident, $bits:literal) => {
@@ -353,6 +405,43 @@ macro_rules! define_shared_ointer {
 }
 
 /// Macro used to define custom enum `ointer`s with the same size of `usize`.
+/// Example testing usage:
+/// ```rust
+/// let mut a = Arc::new(13);
+/// // Define custom enum ointers using MyEnumOinters.
+/// define_enum_ointers!(
+///     MyEnumOinters {
+///         Box<f64> = 1,
+///         Arc<i32> = 2,
+///         i32 = 5
+///     },
+///     8
+/// );
+/// let mut e = MyEnumOinters::new(2, a.clone());
+/// assert_eq!(Arc::strong_count(&a), 2);
+/// // Perform operations on the enum ointer.
+/// assert_eq!(
+///     e.map_mut(
+///         |_| panic!(),
+///         |p| {
+///             let i = **p;
+///             *p = Arc::new(15);
+///             assert_eq!(Arc::strong_count(&a), 1);
+///             a = p.clone();
+///             i
+///         },
+///         |_| panic!()
+///     ),
+///     13
+/// );
+/// assert_eq!(e.map(|_| panic!(), |p1| **p1, |_| panic!()), 15);
+/// assert_eq!(Arc::strong_count(&a), 2);
+/// // Set the enum ointer to a new value (Box<f64>).
+/// e.set_mut(1, Box::new(2.0));
+/// assert_eq!(Arc::strong_count(&a), 1);
+/// assert_eq!(e.map(|p| **p, |_| panic!(), |_| panic!()), 2.0);
+/// assert_eq!(size_of::<MyEnumOinters>(), size_of::<usize>());
+/// ```
 #[macro_export]
 macro_rules! define_enum_ointers {
     (
@@ -485,6 +574,6 @@ macro_rules! define_enum_ointers {
 }
 
 pub use define_enum_ointers;
-pub use define_ointer;
 pub use define_ointer_strong;
+pub use define_ointer;
 pub use define_shared_ointer;

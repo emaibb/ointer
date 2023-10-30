@@ -1,4 +1,4 @@
-//! Steal the high bits of a pointer to store an extra value
+//! This crate provides a set of traits and macros to enable the creation of custom pointers in Rust, allowing for the storage of extra information in the high bits of a pointer. This extra information can be of various types, and the crate provides utilities for working with these custom pointers efficiently. The crate also offers convenient macros for defining custom `ointer`s and `enum ointers` and managing them.
 
 pub mod boxed;
 pub mod ointer;
@@ -58,7 +58,6 @@ mod tests {
             assert_eq!(*o.downgrade().upgrade().unwrap(), Default::default());
         }
         {
-            // Test shared ointers (Arc).
             let mut a = Arc::new(13);
             
             // Define custom enum ointers using MyEnumOinters.
