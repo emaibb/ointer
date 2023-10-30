@@ -288,7 +288,7 @@ macro_rules! define_ointer {
 
         impl<T> $ointer<T>
         where
-            Self: Ointer<1>
+            Self: Ointer<1, Pointer = $pointer<T>>
         {
             /// Get first bit and cast as bool.
             pub fn o(&self) -> bool {
