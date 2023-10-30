@@ -308,15 +308,12 @@ macro_rules! define_ointer_methods {
 pub(crate) use define_ointer_methods;
 
 /// Macro used to define `Box`/`Rc`/`Arc` like `ointer`s.
-/// This crate defines `BBox`(called `Byte-Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using
-/// ```ignore
-/// define_ointer_strong!(BBox, Box, 8);
-/// ```
+/// This crate defines `BBox`(called `Byte-Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using 
+/// `define_ointer_strong!(BBox, Box, 8);` 
 /// And define `OBox` by using
-/// ```ignore
-/// define_ointer_strong!(OBox, Box, 1);
-/// ```
-/// Here are some tests over`OBox`
+/// `define_ointer_strong!(OBox, Box, 1);`
+/// 
+/// Tests over`OBox`
 /// ```
 /// use ointer::{OBox, Ointer};
 /// use std::pin::Pin;
@@ -341,11 +338,10 @@ macro_rules! define_ointer_strong {
 }
 
 /// Macro used to define `Rc/Weak` or `Arc/Weak` like shared `ointer`s.
-/// This crate defines `BRc/BWeak`(called `Byte-Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using
-/// ```ignore
-/// define_shared_ointer!(OArc, Arc, OWeak, Weak, 1);
-/// ```
-/// Here are some tests over `BArc`
+/// This crate defines `BRc/BWeak`(called `Byte-Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using 
+/// `define_shared_ointer!(ORc, Rc, OWeak, Weak, 1);`
+/// 
+/// Tests over `BArc`
 /// ```
 /// use ointer::{sync::BArc, Ointer};
 /// use core::mem::size_of;
@@ -409,6 +405,7 @@ macro_rules! define_shared_ointer {
 }
 
 /// Macro used to define custom enum `ointer`s with the same size of `usize`.
+/// 
 /// Example testing usage:
 /// ```
 /// use ointer::{define_enum_ointers, Ointer};
