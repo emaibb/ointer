@@ -288,7 +288,7 @@ macro_rules! define_ointer {
 
         impl<T> $ointer<T>
         where
-            Self: Ointer<1, Pointer = $pointer<T>>
+            Self: Ointer<1>,
         {
             /// Get first bit and cast as bool.
             pub fn o(&self) -> bool {
@@ -297,6 +297,15 @@ macro_rules! define_ointer {
             /// Flip first bit.
             pub fn flip(&mut self) {
                 self.set_bool(!self.o());
+            }
+            /// Clone and flip.
+            pub fn clone_and_flip(&self) -> Self
+            where
+                Self: Clone,
+            {
+                let mut o = self.clone();
+                o.flip();
+                o
             }
         }
     };
