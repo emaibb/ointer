@@ -285,6 +285,20 @@ macro_rules! define_ointer {
                 self.map_mut(|_: &mut usize, p| unsafe { &mut *(p.deref_mut() as *mut T) })
             }
         }
+
+        impl<T> $ointer<T>
+        where
+            Self: Ointer<1>
+        {
+            /// Get first bit and cast as bool.
+            pub fn o(&self) -> bool {
+                self.get_bool()
+            }
+            /// Flip first bit.
+            pub fn flip(&mut self) {
+                self.set_bool(!self.o());
+            }
+        }
     };
 }
 
@@ -307,7 +321,7 @@ macro_rules! define_ointer_methods {
 pub(crate) use define_ointer_methods;
 
 /// Macro used to define `Box`/`Rc`/`Arc` like `ointer`s.
-/// This crate defines `BBox`(called byte stolen `Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using
+/// This crate defines `BBox`(called byte stolen `Box`) that wraps `Box` and steal high 8-bits(1-byte), by using
 /// `define_ointer_strong!(BBox, Box, 8);`
 /// And define `OBox`(called orientable `Box`) by using
 /// `define_ointer_strong!(OBox, Box, 1);`
