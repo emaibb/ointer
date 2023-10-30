@@ -449,7 +449,7 @@ macro_rules! define_shared_ointer {
 /// assert_eq!(Arc::strong_count(&a), 2);
 /// // Perform operations on the enum ointer.
 /// assert_eq!(
-///     e.map_mut(
+///     e.map_enum_mut(
 ///         |_| panic!(),
 ///         |p| {
 ///             let i = **p;
@@ -462,12 +462,12 @@ macro_rules! define_shared_ointer {
 ///     ),
 ///     13
 /// );
-/// assert_eq!(e.map(|_| panic!(), |p1| **p1, |_| panic!()), 15);
+/// assert_eq!(e.map_enum(|_| panic!(), |p1| **p1, |_| panic!()), 15);
 /// assert_eq!(Arc::strong_count(&a), 2);
 /// // Set the enum ointer to a new value (Box<f64>).
 /// e.set_mut(1, Box::new(2.0));
 /// assert_eq!(Arc::strong_count(&a), 1);
-/// assert_eq!(e.map(|p| **p, |_| panic!(), |_| panic!()), 2.0);
+/// assert_eq!(e.map_enum(|p| **p, |_| panic!(), |_| panic!()), 2.0);
 /// assert_eq!(size_of::<MyEnumOinters>(), size_of::<usize>());
 /// ```
 #[macro_export]
@@ -480,14 +480,11 @@ macro_rules! define_enum_ointers {
     ) => {
         paste::paste!{
             #[repr(transparent)]
-            struct [<$name Inner>](core::num::NonZeroUsize);
+            pub struct $name(core::num::NonZeroUsize);
 
-            unsafe impl Ointer<$bits> for [<$name Inner>] {
+            unsafe impl Ointer<$bits> for $name {
                 type Pointer = core::num::NonZeroUsize;
             }
-
-            #[repr(transparent)]
-            pub struct $name([<$name Inner>]);
 
             impl $name {
                 #[inline(always)]
@@ -502,12 +499,12 @@ macro_rules! define_enum_ointers {
                             if size_of::<P>() > size_of::<usize>() {
                                 panic!("Size overflow")
                             }
-                            let mut inner = [<$name Inner>](unsafe {
+                            let mut inner = $name(unsafe {
                                 *(&p as *const P as *const core::num::NonZeroUsize)
                             });
                             inner.set_usize(u);
                             core::mem::forget(p);
-                            $name(inner)
+                            inner
                         }),
                         *,
                         _ => panic!("Unmatched unsigned num")
@@ -518,7 +515,15 @@ macro_rules! define_enum_ointers {
                     *self = Self::new(u, p);
                 }
                 #[inline(always)]
-                pub fn map<
+                pub unsafe fn as_ointer<P: Ointer<$bits> + 'static>(&self) -> &P {
+                    &*(self as *const Self as *const P)
+                }
+                #[inline(always)]
+                pub unsafe fn as_ointer_mut<P: Ointer<$bits> + 'static>(&mut self) -> &mut P {
+                    &mut *(self as *mut Self as *mut P)
+                }
+                #[inline(always)]
+                pub fn map_enum<
                     R,
                     $([<F $unsigned>]: FnOnce(&$pointer) -> R),
                     *
@@ -527,14 +532,14 @@ macro_rules! define_enum_ointers {
                     $([<f $unsigned>]: [<F $unsigned>]),
                     *
                 ) -> R {
-                    let u = self.0.get_usize();
+                    let u = self.get_usize();
                     match u {
                         $($unsigned => {
-                            let mut u = self.0.get_ptr_as_usize();
+                            let mut u = self.get_ptr_as_usize();
                             let p = unsafe {
                                 &mut *(&mut u as *mut usize as *mut Self)
                             };
-                            p.0.set_usize(0);
+                            p.set_usize(0);
                             [<f $unsigned>](unsafe {
                                 &*(p as *const Self as *const $pointer)
                             })
@@ -544,7 +549,7 @@ macro_rules! define_enum_ointers {
                     }
                 }
                 #[inline(always)]
-                pub fn map_mut<
+                pub fn map_enum_mut<
                     R,
                     $([<F $unsigned>]: FnOnce(&mut $pointer) -> R),
                     *
@@ -553,14 +558,14 @@ macro_rules! define_enum_ointers {
                     $([<f $unsigned>]: [<F $unsigned>]),
                     *
                 ) -> R {
-                    let u = self.0.get_usize();
+                    let u = self.get_usize();
                     match u {
                         $($unsigned => {
-                            self.0.set_usize(0);
+                            self.set_usize(0);
                             let r = [<f $unsigned>](unsafe {
                                 &mut *(self as *mut Self as *mut $pointer)
                             });
-                            self.0.set_usize(u);
+                            self.set_usize(u);
                             r
                         }),
                         *,
@@ -576,13 +581,13 @@ macro_rules! define_enum_ointers {
                     ), *
             {
                 fn clone(&self) -> Self {
-                    self.map($(|p| Self::new($unsigned, p.clone())), *)
+                    self.map_enum($(|p| Self::new($unsigned, p.clone())), *)
                 }
             }
 
             impl core::ops::Drop for $name {
                 fn drop(&mut self) {
-                    self.map_mut(
+                    self.map_enum_mut(
                         $(|p| {
                             $unsigned;
                             unsafe {

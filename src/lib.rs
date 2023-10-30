@@ -75,7 +75,7 @@ mod tests {
 
             // Perform operations on the enum ointer.
             assert_eq!(
-                e.map_mut(
+                e.map_enum_mut(
                     |_| panic!(),
                     |p| {
                         let i = **p;
@@ -88,13 +88,13 @@ mod tests {
                 ),
                 13
             );
-            assert_eq!(e.map(|_| panic!(), |p1| **p1, |_| panic!()), 15);
+            assert_eq!(e.map_enum(|_| panic!(), |p1| **p1, |_| panic!()), 15);
             assert_eq!(Arc::strong_count(&a), 2);
 
             // Set the enum ointer to a new value (Box<f64>).
             e.set_mut(1, Box::new(2.0));
             assert_eq!(Arc::strong_count(&a), 1);
-            assert_eq!(e.map(|p| **p, |_| panic!(), |_| panic!()), 2.0);
+            assert_eq!(e.map_enum(|p| **p, |_| panic!(), |_| panic!()), 2.0);
             assert_eq!(size_of::<Option<MyEnumOinters>>(), size_of::<usize>());
         }
 
