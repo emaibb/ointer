@@ -73,11 +73,10 @@ pub unsafe trait Ointer<const N: usize> {
         }
         self.assert_stealable();
     }
-    /// Assert stealable
+    /// Assert high `N` bits is all `0`.
     #[inline(always)]
     fn assert_stealable(&self) {
-        let u = self.get_usize();
-        assert_eq!(u >> Self::SHIFT_BITS, 0);
+        assert_eq!(self.get_bool(), false);
     }
     /// Get high `N` bits and cast as `T`.
     #[inline(always)]
@@ -110,7 +109,7 @@ pub unsafe trait Ointer<const N: usize> {
     #[inline(always)]
     fn map_mut<T: Copy, R, F: FnOnce(&mut T, &mut Self::Pointer) -> R>(&mut self, f: F) -> R
     where
-        Self: From<Self::Pointer> + OinterGet<T, N> + OinterSet<T, N>,
+        Self: OinterGet<T, N> + OinterSet<T, N>,
     {
         let mut x = self.get_high_bits();
         let mut u = self.get_ptr_as_usize();
@@ -308,11 +307,11 @@ macro_rules! define_ointer_methods {
 pub(crate) use define_ointer_methods;
 
 /// Macro used to define `Box`/`Rc`/`Arc` like `ointer`s.
-/// This crate defines `BBox`(called byte stolen `Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using 
-/// `define_ointer_strong!(BBox, Box, 8);` 
+/// This crate defines `BBox`(called byte stolen `Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using
+/// `define_ointer_strong!(BBox, Box, 8);`
 /// And define `OBox`(called orientable `Box`) by using
 /// `define_ointer_strong!(OBox, Box, 1);`
-/// 
+///
 /// Tests over`OBox`
 /// ```
 /// use ointer::{OBox, Ointer};
@@ -338,11 +337,11 @@ macro_rules! define_ointer_strong {
 }
 
 /// Macro used to define `Rc/Weak` or `Arc/Weak` like shared `ointer`s.
-/// This crate defines `BRc/BWeak`(called byte stolen `Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using 
+/// This crate defines `BRc/BWeak`(called byte stolen `Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using
 /// `define_shared_ointer!(BRc, Rc, BWeak, Weak, 8);`
 /// And define `ORc/OWeak`(called orientable `Rc/Weak`) by using
 /// `define_shared_ointer!(ORc, Rc, OWeak, Weak, 1);`
-/// 
+///
 /// Tests over `BArc`
 /// ```
 /// use ointer::{sync::BArc, Ointer};
@@ -407,7 +406,7 @@ macro_rules! define_shared_ointer {
 }
 
 /// Macro used to define custom enum `ointer`s with the same size of `usize`.
-/// 
+///
 /// Example testing usage:
 /// ```
 /// use ointer::{define_enum_ointers, Ointer};
