@@ -174,78 +174,7 @@ pub unsafe trait OinterSet<T: Copy, const N: usize>: Ointer<N> {
 unsafe impl<const N: usize, T: Copy, Ty: Ointer<N>> OinterGet<T, N> for Ty {}
 unsafe impl<const N: usize, T: Copy, Ty: Ointer<N>> OinterSet<T, N> for Ty {}
 
-// unsafe impl<const N: usize, T: Ointer<N>> OinterGet<bool, N> for T {
-//     #[inline(always)]
-//     fn get_high_bits(&self) -> bool {
-//         self.get_bool()
-//     }
-// }
-
-// unsafe impl<const N: usize, T: Ointer<N>> OinterSet<bool, N> for T {
-//     #[inline(always)]
-//     fn set_high_bits_mut(&mut self, b: bool) {
-//         self.set_bool(b);
-//     }
-// }
-
-// unsafe impl<const N: usize, T: Ointer<N>> OinterGet<isize, N> for T {
-//     #[inline(always)]
-//     fn get_high_bits(&self) -> isize {
-//         self.get_isize()
-//     }
-// }
-
-// unsafe impl<const N: usize, T: Ointer<N>> OinterSet<isize, N> for T {
-//     #[inline(always)]
-//     fn set_high_bits_mut(&mut self, i: isize) {
-//         self.set_isize(i);
-//     }
-// }
-
-// unsafe impl<const N: usize, T: Ointer<N>> OinterGet<usize, N> for T {
-//     #[inline(always)]
-//     fn get_high_bits(&self) -> usize {
-//         self.get_usize()
-//     }
-// }
-
-// unsafe impl<const N: usize, T: Ointer<N>> OinterSet<usize, N> for T {
-//     #[inline(always)]
-//     fn set_high_bits_mut(&mut self, u: usize) {
-//         self.set_usize(u);
-//     }
-// }
-
-// macro_rules! define_ointer_set_and_get {
-//     ($from:ty, $to:ty) => {
-//         unsafe impl<const N: usize, T: OinterGet<$from, N>> OinterGet<$to, N> for T {
-//             #[inline(always)]
-//             fn get_high_bits(&self) -> $to {
-//                 <Self as OinterGet<$from, N>>::get_high_bits(self) as $to
-//             }
-//         }
-
-//         unsafe impl<const N: usize, T: OinterSet<$from, N>> OinterSet<$to, N> for T {
-//             #[inline(always)]
-//             fn set_high_bits_mut(&mut self, x: $to) {
-//                 <Self as OinterSet<$from, N>>::set_high_bits_mut(self, x as $from)
-//             }
-//         }
-//     };
-// }
-
-// define_ointer_set_and_get!(isize, i8);
-// define_ointer_set_and_get!(isize, i16);
-// define_ointer_set_and_get!(isize, i32);
-// define_ointer_set_and_get!(isize, i64);
-// define_ointer_set_and_get!(isize, i128);
-
-// define_ointer_set_and_get!(usize, u8);
-// define_ointer_set_and_get!(usize, u16);
-// define_ointer_set_and_get!(usize, u32);
-// define_ointer_set_and_get!(usize, u64);
-// define_ointer_set_and_get!(usize, u128);
-
+/// Macro used to define `Weak` like `ointer`s.
 #[macro_export]
 macro_rules! define_ointer {
     ($ointer:ident, $pointer:ident, $bits:literal) => {
@@ -378,6 +307,7 @@ macro_rules! define_ointer_methods {
 
 pub(crate) use define_ointer_methods;
 
+/// Macro used to define `Box`/`Rc`/`Arc` like `ointer`s.
 #[macro_export]
 macro_rules! define_ointer_strong {
     ($ointer:ident, $pointer:ident, $bits:literal) => {
@@ -386,6 +316,7 @@ macro_rules! define_ointer_strong {
     };
 }
 
+/// Macro used to define `Rc/Weak` like shared `ointer`s
 #[macro_export]
 macro_rules! define_shared_ointer {
     ($ointer_strong:ident, $pointer_strong:ident, $ointer_weak:ident, $pointer_weak:ident, $bits:literal) => {
@@ -421,6 +352,7 @@ macro_rules! define_shared_ointer {
     };
 }
 
+/// Macro used to define custom enum `ointer`s with the same size of `usize`.
 #[macro_export]
 macro_rules! define_enum_ointers {
     (
@@ -444,10 +376,14 @@ macro_rules! define_enum_ointers {
                 #[inline(always)]
                 pub fn new<P: 'static>(u: usize, p: P) -> Self {
                     use core::any::TypeId;
+                    use core::mem::size_of;
                     match u {
                         $($unsigned => {
                             if TypeId::of::<P>() != TypeId::of::<$pointer>() {
                                 panic!("Unmatched pointer type")
+                            }
+                            if size_of::<P>() > size_of::<usize>() {
+                                panic!("Size overflow")
                             }
                             let mut inner = [<$name Inner>](unsafe {
                                 *(&p as *const P as *const usize)
@@ -459,23 +395,6 @@ macro_rules! define_enum_ointers {
                         *,
                         _ => panic!("Unmatched unsigned num")
                     }
-                }
-                #[inline(always)]
-                pub fn clear(&mut self) {
-                    self.map_mut(
-                        $(|p| {
-                            $unsigned;
-                            unsafe {
-                                core::mem::ManuallyDrop::drop(
-                                    &mut *(
-                                        p as *mut $pointer
-                                        as *mut core::mem::ManuallyDrop<$pointer>
-                                    )
-                                );
-                            }
-                        }), *
-                    );
-                    self.0.set_usize(0);
                 }
                 #[inline(always)]
                 pub fn set_mut<P: 'static>(&mut self, u: usize, p: P) {
@@ -546,7 +465,19 @@ macro_rules! define_enum_ointers {
 
             impl core::ops::Drop for $name {
                 fn drop(&mut self) {
-                    self.clear();
+                    self.map_mut(
+                        $(|p| {
+                            $unsigned;
+                            unsafe {
+                                core::mem::ManuallyDrop::drop(
+                                    &mut *(
+                                        p as *mut $pointer
+                                        as *mut core::mem::ManuallyDrop<$pointer>
+                                    )
+                                );
+                            }
+                        }), *
+                    );
                 }
             }
         }
