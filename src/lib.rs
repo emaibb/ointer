@@ -36,7 +36,7 @@ mod tests {
             let mut o = BArc::new(1);
             assert_eq!(*o, 1);
             assert_eq!(o.get::<bool>(), false);
-            
+
             // Define a small enum for testing.
             #[derive(Clone, Copy, PartialEq, Debug)]
             enum MySmallEnum {
@@ -45,11 +45,11 @@ mod tests {
                 _C,
             }
             assert_eq!(size_of::<MySmallEnum>(), 1);
-            
+
             o.set_mut(MySmallEnum::B);
             assert_eq!(*o, 1);
             assert_eq!(o.get::<MySmallEnum>(), MySmallEnum::B);
-            
+
             // Modify the bool and pointer inside the ointer.
             o.map_mut(|b: &mut bool, p| {
                 *b = !*b;
@@ -59,7 +59,7 @@ mod tests {
         }
         {
             let mut a = Arc::new(13);
-            
+
             // Define custom enum ointers using MyEnumOinters.
             define_enum_ointers!(
                 MyEnumOinters {
@@ -69,10 +69,10 @@ mod tests {
                 },
                 8
             );
-            
+
             let mut e = MyEnumOinters::new(2, a.clone());
             assert_eq!(Arc::strong_count(&a), 2);
-            
+
             // Perform operations on the enum ointer.
             assert_eq!(
                 e.map_mut(
@@ -90,14 +90,14 @@ mod tests {
             );
             assert_eq!(e.map(|_| panic!(), |p1| **p1, |_| panic!()), 15);
             assert_eq!(Arc::strong_count(&a), 2);
-            
+
             // Set the enum ointer to a new value (Box<f64>).
             e.set_mut(1, Box::new(2.0));
             assert_eq!(Arc::strong_count(&a), 1);
             assert_eq!(e.map(|p| **p, |_| panic!(), |_| panic!()), 2.0);
             assert_eq!(size_of::<MyEnumOinters>(), size_of::<usize>());
         }
-        
+
         // Test size comparison of Rc<i32> and Option<BRc<i32>>.
         assert_eq!(size_of::<Rc<i32>>(), size_of::<Option<BRc<i32>>>());
     }

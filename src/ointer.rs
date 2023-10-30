@@ -309,15 +309,17 @@ pub(crate) use define_ointer_methods;
 
 /// Macro used to define `Box`/`Rc`/`Arc` like `ointer`s.
 /// This crate defines `BBox`(called `Byte-Box`) that wraps `Box` and and steal high 8-bits(1-byte), by using
-/// ```rust
+/// ```ignore
 /// define_ointer_strong!(BBox, Box, 8);
 /// ```
 /// And define `OBox` by using
-/// ```rust
+/// ```ignore
 /// define_ointer_strong!(OBox, Box, 1);
 /// ```
 /// Here are some tests over`OBox`
-/// ```rust
+/// ```
+/// use ointer::{OBox, Ointer};
+/// use std::pin::Pin;
 /// let mut o = OBox::new(1);
 /// assert_eq!(*o, 1);
 /// assert_eq!(o.get::<bool>(), false);
@@ -340,15 +342,17 @@ macro_rules! define_ointer_strong {
 
 /// Macro used to define `Rc/Weak` or `Arc/Weak` like shared `ointer`s.
 /// This crate defines `BRc/BWeak`(called `Byte-Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using
-/// ```rust
+/// ```ignore
 /// define_shared_ointer!(OArc, Arc, OWeak, Weak, 1);
 /// ```
 /// Here are some tests over `BArc`
-/// ```rust
+/// ```
+/// use ointer::{sync::BArc, Ointer};
+/// use core::mem::size_of;
 /// let mut o = BArc::new(1);
 /// assert_eq!(*o, 1);
 /// assert_eq!(o.get::<bool>(), false);
-/// 
+///
 /// // Define a small enum for testing.
 /// #[derive(Clone, Copy, PartialEq, Debug)]
 /// enum MySmallEnum {
@@ -357,11 +361,11 @@ macro_rules! define_ointer_strong {
 ///     _C,
 /// }
 /// assert_eq!(size_of::<MySmallEnum>(), 1);
-/// 
+///
 /// o.set_mut(MySmallEnum::B);
 /// assert_eq!(*o, 1);
 /// assert_eq!(o.get::<MySmallEnum>(), MySmallEnum::B);
-/// 
+///
 /// // Modify the bool and pointer inside the ointer.
 /// o.map_mut(|b: &mut bool, p| {
 ///     *b = !*b;
@@ -406,7 +410,10 @@ macro_rules! define_shared_ointer {
 
 /// Macro used to define custom enum `ointer`s with the same size of `usize`.
 /// Example testing usage:
-/// ```rust
+/// ```
+/// use ointer::{define_enum_ointers, Ointer};
+/// use std::sync::Arc;
+/// use core::mem::size_of;
 /// let mut a = Arc::new(13);
 /// // Define custom enum ointers using MyEnumOinters.
 /// define_enum_ointers!(
@@ -574,6 +581,6 @@ macro_rules! define_enum_ointers {
 }
 
 pub use define_enum_ointers;
-pub use define_ointer_strong;
 pub use define_ointer;
+pub use define_ointer_strong;
 pub use define_shared_ointer;
