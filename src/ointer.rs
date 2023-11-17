@@ -178,13 +178,13 @@ unsafe impl<const N: usize, T: Copy, Ty: Ointer<N>> OinterSet<T, N> for Ty {}
 macro_rules! define_ointer {
     ($ointer:ident, $pointer:ident, $bits:literal) => {
         #[repr(transparent)]
-        pub struct $ointer<T>($pointer<T>);
+        pub struct $ointer<T: ?Sized>($pointer<T>);
 
-        unsafe impl<T> Ointer<$bits> for $ointer<T> {
+        unsafe impl<T: ?Sized> Ointer<$bits> for $ointer<T> {
             type Pointer = $pointer<T>;
         }
 
-        impl<T> core::convert::From<$pointer<T>> for $ointer<T> {
+        impl<T: ?Sized> core::convert::From<$pointer<T>> for $ointer<T> {
             fn from(p: $pointer<T>) -> Self {
                 let s = Self(p);
                 s.assert_stealable();
@@ -202,7 +202,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::clone::Clone for $ointer<T>
+        impl<T: ?Sized> core::clone::Clone for $ointer<T>
         where
             Self: Ointer<$bits, Pointer = $pointer<T>>,
             <Self as Ointer<$bits>>::Pointer: Clone,
@@ -216,7 +216,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::fmt::Debug for $ointer<T>
+        impl<T: ?Sized> core::fmt::Debug for $ointer<T>
         where
             Self: Ointer<$bits, Pointer = $pointer<T>>,
             <Self as Ointer<$bits>>::Pointer: core::fmt::Debug,
@@ -226,7 +226,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::ops::Drop for $ointer<T>
+        impl<T: ?Sized> core::ops::Drop for $ointer<T>
         where
             Self: Ointer<$bits>,
         {
@@ -235,7 +235,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::hash::Hash for $ointer<T>
+        impl<T: ?Sized> core::hash::Hash for $ointer<T>
         where
             Self: Ointer<$bits, Pointer = $pointer<T>>,
             <Self as Ointer<$bits>>::Pointer: core::hash::Hash,
@@ -245,7 +245,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::cmp::PartialEq for $ointer<T>
+        impl<T: ?Sized> core::cmp::PartialEq for $ointer<T>
         where
             Self: Ointer<$bits, Pointer = $pointer<T>>,
             <Self as Ointer<$bits>>::Pointer: core::cmp::PartialEq,
@@ -255,7 +255,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::cmp::PartialOrd for $ointer<T>
+        impl<T: ?Sized> core::cmp::PartialOrd for $ointer<T>
         where
             Self: Ointer<$bits, Pointer = $pointer<T>>,
             <Self as Ointer<$bits>>::Pointer: core::cmp::PartialOrd,
@@ -265,7 +265,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::ops::Deref for $ointer<T>
+        impl<T: ?Sized> core::ops::Deref for $ointer<T>
         where
             Self: Ointer<$bits, Pointer = $pointer<T>>,
             <Self as Ointer<$bits>>::Pointer: core::ops::Deref<Target = T>,
@@ -276,7 +276,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> core::ops::DerefMut for $ointer<T>
+        impl<T: ?Sized> core::ops::DerefMut for $ointer<T>
         where
             Self: Ointer<$bits, Pointer = $pointer<T>>,
             <Self as Ointer<$bits>>::Pointer: core::ops::DerefMut<Target = T>,
@@ -286,7 +286,7 @@ macro_rules! define_ointer {
             }
         }
 
-        impl<T> $ointer<T>
+        impl<T: ?Sized> $ointer<T>
         where
             Self: Ointer<1>,
         {
@@ -398,7 +398,7 @@ macro_rules! define_shared_ointer {
     ($ointer_strong:ident, $pointer_strong:ident, $ointer_weak:ident, $pointer_weak:ident, $bits:literal) => {
         define_ointer_strong!($ointer_strong, $pointer_strong, $bits);
         define_ointer!($ointer_weak, $pointer_weak, $bits);
-        impl<T> $ointer_strong<T> {
+        impl<T: ?Sized> $ointer_strong<T> {
             pub fn downgrade(&self) -> $ointer_weak<T> {
                 self.map(|u: usize, p| {
                     let mut o: $ointer_weak<T> = $pointer_strong::downgrade(p).into();
@@ -413,7 +413,7 @@ macro_rules! define_shared_ointer {
                 self.map(|_: usize, p| $pointer_strong::weak_count(p))
             }
         }
-        impl<T> $ointer_weak<T> {
+        impl<T: ?Sized> $ointer_weak<T> {
             pub fn upgrade(&self) -> Option<$ointer_strong<T>> {
                 self.map(|u: usize, w| {
                     let p = w.upgrade();

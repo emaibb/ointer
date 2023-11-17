@@ -1,6 +1,6 @@
 [package]
 name = "ointer"
-version = "3.0.11"
+version = "3.0.12"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["topology", "geometry"]
