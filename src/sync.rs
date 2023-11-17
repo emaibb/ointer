@@ -1,3 +1,5 @@
+//! This module defines `ointer`s that wraps `Arc/Weak`, named `BArc/BWeak`(called byte stolen `Arc/Weak`) and `OArc/OWeak`(called orientable `Arc/Weak`, with 1 bit stolen).
+
 use crate::ointer::*;
 use std::sync::{Arc, Weak};
 

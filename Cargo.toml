@@ -1,6 +1,6 @@
 [package]
 name = "ointer"
-version = "3.0.10"
+version = "3.0.11"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["topology", "geometry"]
@@ -9,4 +9,4 @@ authors = ["Mingze Feng <mzfengibb@outlook.com>"]
 description = "Steal the high bits of a pointer to store an extra value"
 
 [dependencies]
-paste = "1.0"
+paste = "1"

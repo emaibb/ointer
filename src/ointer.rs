@@ -360,7 +360,7 @@ macro_rules! define_ointer_strong {
 }
 
 /// Macro used to define `Rc/Weak` or `Arc/Weak` like shared `ointer`s.
-/// This crate defines `BRc/BWeak`(called byte stolen `Rc/Weak`) that wraps `Rc/Weak` and and steal high 8-bits(1-byte), by using
+/// This crate defines `BRc/BWeak`(called byte stolen `Rc/Weak`) that wraps `Rc/Weak` and steal high 8-bits(1-byte), by using
 /// `define_shared_ointer!(BRc, Rc, BWeak, Weak, 8);`
 /// And define `ORc/OWeak`(called orientable `Rc/Weak`) by using
 /// `define_shared_ointer!(ORc, Rc, OWeak, Weak, 1);`

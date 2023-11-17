@@ -7,6 +7,17 @@ pub use boxed::*;
 pub mod rc;
 pub mod sync;
 
+/// Type alias for `boxed::OBox`
+pub type Ox<T> = OBox<T>;
+/// Type alias for `rc::ORc`
+pub type Oc<T> = rc::ORc<T>;
+/// Type alias for `rc::OWeak`
+pub type Ok<T> = rc::OWeak<T>;
+/// Type alias for `sync::OArc`
+pub type Orc<T> = sync::OArc<T>;
+/// Type alias for `sync::OWeak`
+pub type Oak<T> = sync::OWeak<T>;
+
 /// Test the Ointer Library
 #[cfg(test)]
 mod tests {
